@@ -1,0 +1,68 @@
+version: "3.8"
+
+services:
+  backend:
+    build:
+      context: ../
+      dockerfile: docker_backend/Dockerfile
+    container_name: gallery_backend_dev
+    ports:
+      - "${BACKEND_PORT:-4000}:4000"
+    volumes:
+      # Development: mount source code for hot reload
+      - ../backend:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - PORT=${BACKEND_PORT}
+      - DB_HOST=mysql
+      - DB_PORT=${DB_PORT}
+      - DB_USERNAME=${DB_USERNAME}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_DATABASE=${DB_DATABASE}
+      - CORS_ORIGIN=${CORS_ORIGIN}
+    env_file:
+      - .env
+    command: npm run start:dev
+    depends_on:
+      mysql:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - gallery_network
+
+  mysql:
+    image: mysql:8.0
+    container_name: gallery_mysql_dev
+    environment:
+      - MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD}
+      - MYSQL_DATABASE=${DB_DATABASE}
+      - MYSQL_USER=${DB_USERNAME}
+      - MYSQL_PASSWORD=${DB_PASSWORD}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "mysqladmin",
+          "ping",
+          "-h",
+          "localhost",
+          "-u",
+          "root",
+          "-p${DB_ROOT_PASSWORD}",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - gallery_network
+
+volumes:
+  mysql_data:
+    driver: local
+networks:
+  gallery_network:
+    driver: bridge

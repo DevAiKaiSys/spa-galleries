@@ -1,0 +1,5 @@
+### Get all images with pagination and filter
+GET http://localhost:4000/images?page=1&perPage=10&filter=keyword_u
+
+### Get all images
+GET http://localhost:4000/images
