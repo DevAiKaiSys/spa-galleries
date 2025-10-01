@@ -1,0 +1,30 @@
+services:
+  frontend:
+    build:
+      context: ../
+      dockerfile: docker_frontend/Dockerfile
+    container_name: gallery_frontend_dev
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    volumes:
+      # Development: mount source code for hot reload
+      - ../frontend:/app
+      - /app/node_modules
+      - /app/.next
+    environment:
+      - NODE_ENV=development
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+      - NEXT_PUBLIC_APP_NAME=${NEXT_PUBLIC_APP_NAME}
+      - NEXT_PUBLIC_IMAGES_PER_PAGE=${NEXT_PUBLIC_IMAGES_PER_PAGE}
+    env_file:
+      - .env
+    command: npm run dev
+    stdin_open: true
+    tty: true
+    restart: unless-stopped
+    networks:
+      - gallery_network
+
+networks:
+  gallery_network:
+    driver: bridge
