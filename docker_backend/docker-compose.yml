@@ -20,7 +20,7 @@ services:
       - DB_USERNAME=${DB_USERNAME}
       - DB_PASSWORD=${DB_PASSWORD}
       - DB_DATABASE=${DB_DATABASE}
-      - CORS_ORIGIN=${CORS_ORIGIN}
+      - API_DELAY=${API_DELAY}
     env_file:
       - .env
     command: npm run start:dev
@@ -39,6 +39,8 @@ services:
       - MYSQL_DATABASE=${DB_DATABASE}
       - MYSQL_USER=${DB_USERNAME}
       - MYSQL_PASSWORD=${DB_PASSWORD}
+    ports:
+      - "3308:3306"
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:

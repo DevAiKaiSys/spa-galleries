@@ -13,10 +13,18 @@ export class ImagesController {
     @Query('perPage') perPage = '20',
     @Query('filter') filter?: string,
   ): Promise<ImageItem[]> {
+    const filters = filter ? filter.split(',') : [];
+
+    const apiDelay = parseInt(process.env.API_DELAY || '0', 10);
+
+    if (apiDelay > 0) {
+      await new Promise((resolve) => setTimeout(resolve, apiDelay));
+    }
+
     return this.imagesService.findAll(
       parseInt(page, 10),
       parseInt(perPage, 10),
-      filter,
+      filters,
     );
   }
 }

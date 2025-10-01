@@ -18,27 +18,34 @@ export class ImagesService {
   async findAll(
     page: number,
     perPage: number,
-    filter?: string,
+    filters?: string[],
   ): Promise<ImageItem[]> {
-    const where = filter ? { keywords: Like(`%${filter}%`) } : {};
+    const query = this.imagesRepository.createQueryBuilder('image');
+
+    if (filters && filters.length) {
+      filters.forEach((filter, index) => {
+        query.andWhere(`image.keywords LIKE :filter${index}`, {
+          [`filter${index}`]: `%${filter}%`,
+        });
+      });
+    }
 
     const maxAttempts = 5;
     let attempt = 0;
     let images: ImageItem[] = [];
 
     while (attempt < maxAttempts) {
-      images = await this.imagesRepository.find({
-        where,
-        take: perPage,
-        skip: (page - 1) * perPage,
-        order: { id: 'ASC' },
-      });
+      images = await query
+        .take(perPage)
+        .skip((page - 1) * perPage)
+        .orderBy('image.id', 'ASC')
+        .getMany();
 
       if (images.length > 0) {
         break;
       }
 
-      await this.generateAndSaveImages(perPage * 2, filter);
+      await this.generateAndSaveImages(perPage * 2, filters);
 
       attempt += 1;
     }
@@ -55,18 +62,18 @@ export class ImagesService {
     return this.imagesRepository.save(image);
   }
 
-  private async generateAndSaveImages(count: number, filter?: string) {
+  private async generateAndSaveImages(count: number, filters?: string[]) {
     const imagesToSave: Partial<ImageItem>[] = Array.from({
       length: count,
     }).map((_, i) => ({
       url: `https://placehold.co/${200 + (i % 5) * 50}x${150 + (i % 3) * 40}`,
-      keywords: this.generateKeywords(filter),
+      keywords: this.generateKeywords(filters),
     }));
 
     await this.imagesRepository.save(imagesToSave);
   }
 
-  private generateKeywords(filter?: string): string[] {
+  private generateKeywords(filters?: string[]): string[] {
     const count = Math.floor(Math.random() * 7) + 1;
     const keywordsSet = new Set<string>();
 
@@ -75,8 +82,12 @@ export class ImagesService {
       keywordsSet.add(keyword);
     }
 
-    if (filter) {
-      keywordsSet.add(filter);
+    if (filters) {
+      filters.forEach((filter) => {
+        if (!keywordsSet.has(filter)) {
+          keywordsSet.add(filter);
+        }
+      });
     }
 
     return Array.from(keywordsSet);
