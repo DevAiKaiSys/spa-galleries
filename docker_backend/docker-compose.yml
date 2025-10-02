@@ -21,6 +21,7 @@ services:
       - DB_PASSWORD=${DB_PASSWORD}
       - DB_DATABASE=${DB_DATABASE}
       - API_DELAY=${API_DELAY}
+      - MAX_KEYWORDS_COUNT=${MAX_KEYWORDS_COUNT}
     env_file:
       - .env
     command: npm run start:dev

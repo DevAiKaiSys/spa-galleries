@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Like } from 'typeorm';
 import { ImageItem } from './entities/image.entity';
+import { ConfigService } from '@nestjs/config';
 
 function getRandomLetter() {
   const charCode = 97 + Math.floor(Math.random() * 26); // a=97 → z=122
@@ -10,10 +11,16 @@ function getRandomLetter() {
 
 @Injectable()
 export class ImagesService {
+  private readonly maxKeywordsCount: number;
+
   constructor(
     @InjectRepository(ImageItem)
     private readonly imagesRepository: Repository<ImageItem>,
-  ) {}
+    private readonly configService: ConfigService,
+  ) {
+    this.maxKeywordsCount =
+      this.configService.get<number>('MAX_KEYWORDS_COUNT', 7) || 7;
+  }
 
   async findAll(
     page: number,
@@ -74,7 +81,7 @@ export class ImagesService {
   }
 
   private generateKeywords(filters?: string[]): string[] {
-    const count = Math.floor(Math.random() * 7) + 1;
+    const count = Math.floor(Math.random() * this.maxKeywordsCount) + 1;
     const keywordsSet = new Set<string>();
 
     while (keywordsSet.size < count) {

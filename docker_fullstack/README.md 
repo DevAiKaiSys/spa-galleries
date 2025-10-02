@@ -1,0 +1,9 @@
+# 1. Setup
+cd docker_fullstack
+cp .env.example .env
+
+# 2. รัน
+docker-compose up --build
+
+# 3. เปิดเบราว์เซอร์
+# http://localhost:3000

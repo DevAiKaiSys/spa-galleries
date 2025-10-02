@@ -6,8 +6,6 @@ Frontend:
 - Next.js 15 (App Router)
 - TypeScript
 - Tailwind CSS
-- React Infinite Scroll
-- Axios
 
 Backend:
 

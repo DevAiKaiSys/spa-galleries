@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { ImageItem } from "../data/images";
 
 export default function Gallery() {
@@ -8,22 +8,35 @@ export default function Gallery() {
   const [page, setPage] = useState(1);
   const [filters, setFilters] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState<boolean>(false);
-  const [seenIds, setSeenIds] = useState<Set<number>>(new Set()); // Track already seen ids
+  const [seenIds, setSeenIds] = useState<Set<number>>(new Set());
+  const isInitialMount = useRef(true);
 
   const perPage = parseInt(process.env.NEXT_PUBLIC_IMAGES_PER_PAGE || "12", 10);
 
+  // Load images when filters change or on initial mount
   useEffect(() => {
-    loadMore();
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      loadMore();
+    } else {
+      // Reset and load when filters change
+      setSeenIds(new Set());
+      setPage(1);
+      setVisible([]);
+      loadMoreWithPage(1);
+    }
   }, [filters]);
 
-  const loadMore = async () => {
+  const loadMoreWithPage = async (pageNum: number) => {
+    if (loading) return;
+
     setLoading(true);
 
     try {
       const filterParam =
         filters.size > 0 ? `&filter=${[...filters].join(",")}` : "";
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/images?page=${page}&perPage=${perPage}${filterParam}`
+        `${process.env.NEXT_PUBLIC_API_URL}/images?page=${pageNum}&perPage=${perPage}${filterParam}`
       );
       const data: ImageItem[] = await response.json();
 
@@ -37,12 +50,16 @@ export default function Gallery() {
 
       // Append unique images to the visible list
       setVisible((prev) => [...prev, ...uniqueData]);
-      setPage((prev) => prev + 1);
+      setPage(pageNum + 1);
     } catch (error) {
       console.error("Error loading images:", error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const loadMore = async () => {
+    loadMoreWithPage(page);
   };
 
   const handleScroll = () => {
@@ -57,9 +74,10 @@ export default function Gallery() {
   useEffect(() => {
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
-  }, [loading]);
+  }, [loading, page, filters]);
 
   const handleKeywordClick = (keyword: string) => {
+    setSeenIds(new Set());
     setFilters((prevFilters) => {
       const newFilters = new Set(prevFilters);
       if (newFilters.has(keyword)) {
@@ -69,15 +87,10 @@ export default function Gallery() {
       }
       return newFilters;
     });
-    setPage(1);
-    setVisible([]);
   };
 
   const resetFilters = () => {
-    setFilters(new Set()); // Reset filters
-    setSeenIds(new Set()); // Clear seenIds
-    setPage(1); // Reset page to 1
-    setVisible([]); // Clear visible images
+    setFilters(new Set());
   };
 
   const scrollToTop = () => {

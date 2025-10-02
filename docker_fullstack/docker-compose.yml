@@ -1,0 +1,131 @@
+version: "3.8"
+
+services:
+  # ========================================
+  # Frontend - Next.js
+  # ========================================
+  frontend:
+    build:
+      context: ../
+      dockerfile: docker_frontend/Dockerfile
+    container_name: gallery_frontend
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    volumes:
+      - ../frontend:/app
+      - /app/node_modules
+      - /app/.next
+    environment:
+      - NODE_ENV=development
+      - NEXT_PUBLIC_API_URL=http://localhost:${BACKEND_PORT:-4000}
+      - NEXT_PUBLIC_APP_NAME=${NEXT_PUBLIC_APP_NAME}
+      - NEXT_PUBLIC_IMAGES_PER_PAGE=${NEXT_PUBLIC_IMAGES_PER_PAGE}
+    env_file:
+      - .env
+    command: npm run dev
+    depends_on:
+      - backend
+    stdin_open: true
+    tty: true
+    restart: unless-stopped
+    networks:
+      - gallery_network
+
+  # ========================================
+  # Backend - NestJS
+  # ========================================
+  backend:
+    build:
+      context: ../
+      dockerfile: docker_backend/Dockerfile
+    container_name: gallery_backend
+    ports:
+      - "${BACKEND_PORT:-4000}:4000"
+    volumes:
+      - ../backend:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - PORT=${BACKEND_PORT}
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_USERNAME=${DB_USERNAME}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_DATABASE=${DB_DATABASE}
+      - IMAGES_PER_PAGE=${IMAGES_PER_PAGE}
+      - API_DELAY=${API_DELAY}
+      - MAX_KEYWORDS_COUNT=${MAX_KEYWORDS_COUNT}
+    env_file:
+      - .env
+    command: npm run start:dev
+    depends_on:
+      mysql:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - gallery_network
+
+  # ========================================
+  # Database - MySQL 8
+  # ========================================
+  mysql:
+    image: mysql:8.0
+    container_name: gallery_mysql
+    #ports:
+    #  - "${DB_PORT:-3306}:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD}
+      - MYSQL_DATABASE=${DB_DATABASE}
+      - MYSQL_USER=${DB_USERNAME}
+      - MYSQL_PASSWORD=${DB_PASSWORD}
+      - TZ=Asia/Bangkok
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ../backend/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "mysqladmin",
+          "ping",
+          "-h",
+          "localhost",
+          "-u",
+          "root",
+          "-p${DB_ROOT_PASSWORD}",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+    networks:
+      - gallery_network
+
+  # ========================================
+  # Optional: phpMyAdmin for Database Management
+  # ========================================
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: gallery_phpmyadmin
+    ports:
+      - "${PHPMYADMIN_PORT:-8080}:80"
+    environment:
+      - PMA_HOST=mysql
+      - PMA_PORT=3306
+      - PMA_USER=root
+      - PMA_PASSWORD=${DB_ROOT_PASSWORD}
+    depends_on:
+      - mysql
+    restart: unless-stopped
+    networks:
+      - gallery_network
+
+volumes:
+  mysql_data:
+    driver: local
+
+networks:
+  gallery_network:
+    driver: bridge
